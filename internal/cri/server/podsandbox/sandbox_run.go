@@ -78,7 +78,13 @@ func (c *Controller) Start(ctx context.Context, id string) (cin sandbox.Controll
 		labels = map[string]string{}
 	)
 
-	sandboxImage := c.getSandboxImageName()
+	ociRuntime, err := c.config.GetSandboxRuntime(config, metadata.RuntimeHandler)
+	if err != nil {
+		return cin, fmt.Errorf("failed to get sandbox runtime: %w", err)
+	}
+	log.G(ctx).WithField("podsandboxid", id).Debugf("use OCI runtime %+v", ociRuntime)
+
+	sandboxImage := c.getSandboxImageName(&ociRuntime)
 	// Ensure sandbox container image snapshot.
 	image, err := c.ensureImageExists(ctx, sandboxImage, config, metadata.RuntimeHandler)
 	if err != nil {
@@ -89,12 +95,6 @@ func (c *Controller) Start(ctx context.Context, id string) (cin sandbox.Controll
 	if err != nil {
 		return cin, fmt.Errorf("failed to get image from containerd %q: %w", image.ID, err)
 	}
-
-	ociRuntime, err := c.config.GetSandboxRuntime(config, metadata.RuntimeHandler)
-	if err != nil {
-		return cin, fmt.Errorf("failed to get sandbox runtime: %w", err)
-	}
-	log.G(ctx).WithField("podsandboxid", id).Debugf("use OCI runtime %+v", ociRuntime)
 
 	labels["oci_runtime_type"] = ociRuntime.Type
 
@@ -348,7 +348,13 @@ func (c *Controller) ensureImageExists(ctx context.Context, ref string, config *
 	return &newImage, nil
 }
 
-func (c *Controller) getSandboxImageName() string {
+func (c *Controller) getSandboxImageName(runtime *criconfig.Runtime) string {
+
+	// return the name of the sandbox image for the runtime
+	if runtime != nil && runtime.SandboxImage != "" {
+		return runtime.SandboxImage
+	}
+
 	// returns the name of the sandbox image used to scope pod shared resources used by the pod's containers,
 	// if empty return the default sandbox image.
 	if image, ok := c.imageConfig.PinnedImages["sandbox"]; ok && image != "" {

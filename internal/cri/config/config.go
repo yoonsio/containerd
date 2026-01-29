@@ -130,6 +130,8 @@ type Runtime struct {
 	// we can also set it to "streaming" to create a stream by streaming api,
 	// and use it as a channel to transfer the io stream
 	IOType string `toml:"io_type" json:"io_type"`
+	// SandboxImage is the image used by sandbox container.
+	SandboxImage string `toml:"sandbox_image" json:"sandboxImage"`
 }
 
 // ContainerdConfig contains toml config related to containerd
